@@ -11,8 +11,7 @@
 	"depends"		: [ ],
 	"tags"			: [ "filesystem", "email", "IO" ],
 	"provides"		: {
-		"IO::Maildir" : "lib/IO/Maildir.rakumod",
-		"IO::Maildir::File" : "lib/IO/Maildir.rakumod"
+		"IO::Maildir" : "lib/IO/Maildir.rakumod"
 	},
 	"resources"	: []
 }
