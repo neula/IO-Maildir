@@ -1,0 +1,18 @@
+{
+	"meta-version"  : "0",
+	"perl"          : "6.d",
+	"name"			: "IO::Maildir",
+	"api"			: "0",
+	"version"		: "0.0.1",
+	"auth"			: "zef:neula",
+	"description"	: "Simple module for accessing maildirs",
+	"license"		: "Artistic-2.0",
+	"build-depends" : [ ],
+	"depends"		: [ ],
+	"tags"			: [ "filesystem", "email", "IO" ],
+	"provides"		: {
+		"IO::Maildir" : "lib/IO/Maildir.rakumod",
+		"IO::Maildir::File" : "lib/IO/Maildir.rakumod"
+	},
+	"resources"	: []
+}
