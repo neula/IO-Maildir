@@ -7,6 +7,8 @@ my regex mailflags { \:2 [\,|(P|R|S|T|D|F)|(<:Ll>)]* $ }
 my $deliveries = 0;
 my $msgdirs = <cur new tmp>;
 
+our $maildir-agent = DELIVERY;
+
 multi is-maildir(IO $path --> Bool ) is export {
 	?($path ~~ :d && $path.dir.grep( *.basename ∈ $msgdirs) == $msgdirs);
 }
@@ -30,7 +32,11 @@ class IO::Maildir::File does IO {
 
 	method IO( --> IO ) { $!dir.IO.add($!name); }
 	method flags( --> Set ) { set $/[*;*]».Str if ~$!name ~~ &mailflags }
-	method flag(*%flags where *.keys.Set ⊆ <P R S T D>.Set ) {
+	method flag(
+		:$agent = $maildir-agent,
+		*%flags where *.keys.Set ⊆ <P R S T D>.Set )
+	{
+		fail "Setting flags is reserved for USER agents." if $agent ~~ DELIVERY;
 		my $uniq = $!name;
 		my %new;
 		if ($uniq ~~ &mailflags) {
@@ -62,7 +68,6 @@ class IO::Maildir does IO {
 	trusts IO::Maildir::File;
 
 	has $.path handles <IO d e f l r rw rwx s w x z>;
-	has Agent $.agent is rw = DELIVERY;
 
 	method new(|c) { self.bless( path => IO::Path.new(|c)) }
 	method is-maildir( --> Bool ) { is-maildir($.path) }
@@ -85,7 +90,7 @@ class IO::Maildir does IO {
 	}
 	method !rename-or-mv(IO $path,
 						 Str :$uniq is copy = uniq(),
-						 :$agent = $!agent --> IO::Path)
+						 :$agent = $maildir-agent --> IO::Path)
 	{
 		my &padd-uniq = { $!path.add: ~($_ // $agent.value) ~ "/" ~ $uniq };
 

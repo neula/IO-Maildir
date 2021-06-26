@@ -2,7 +2,7 @@ use Test;
 use IO::Maildir;
 
 chdir("t".IO);
-plan 7;
+plan 9;
 
 my $tdir = maildir "./testdir";
 my $tstring = "HeyHeyMyMy\n";
@@ -18,8 +18,8 @@ is ~$tdir.IO.add("new/" ~ ~$mailfile.name), $mailfile.IO, ~$mailfile.name ~ " en
 isa-ok $mailfile = $tdir.receive($mailfile.IO), IO::Maildir::File, "Receiving a file..";
 is ~$tdir.IO.add("new/" ~ ~$mailfile.name), $mailfile.IO, ~$mailfile.name ~ " ended up in the right place";
 
-$mailfile.flag( D => True );
-$*ERR.say($mailfile.flags);
-ok ($mailfile.flags ≡ set <D>), "Setting Flags";
+fails-like { $mailfile.flag( D => True ) }, Exception, "Failing to set flags as DELIVERY agent (default)";
+isa-ok $mailfile.flag(agent => USER, D => True ), Str, "Can set flags as USER agent";
+ok ($mailfile.flags ≡ set <D>), "Reading flags";
 
 done-testing;

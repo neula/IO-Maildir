@@ -13,5 +13,6 @@
 	"provides"		: {
 		"IO::Maildir" : "lib/IO/Maildir.rakumod"
 	},
+	"source-url"	: "https://github.com/neula/IO-Maildir.git",
 	"resources"	: []
 }
