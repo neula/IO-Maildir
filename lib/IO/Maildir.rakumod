@@ -30,7 +30,11 @@ class IO::Maildir::File does IO {
 	has IO::Maildir $.dir;
 	has $.name;
 
-	method IO( --> IO ) { $!dir.IO.add($!name); }
+	method IO( --> IO ) {
+		for <new cur>.map: { $!dir.IO.add($_) } {
+			($_ ~~ :f ?? return $_ !! Nil) given .add($!name);
+		}
+	}
 	method flags( --> Set ) { set $/[*;*]».Str if ~$!name ~~ &mailflags }
 	method flag(
 		:$agent = $maildir-agent,
@@ -48,7 +52,6 @@ class IO::Maildir::File does IO {
 				%new{.key} = True;
 			} else {
 				%new{.key} = False;
-
 			}
 		}
 		$uniq ~= ":2," ~ ( join('')
@@ -56,11 +59,13 @@ class IO::Maildir::File does IO {
 						   <== map( *.key )
 						   <== grep( *.value )
 						   <== %new);
-		rename .add($!name), .add($uniq) given $!dir.IO;
+		.rename(.dirname.IO.add: $uniq) given $.IO;
 		$!name = $uniq;
 	}
 	submethod TWEAK(IO :$path) {
-		($!dir, $!name) = (maildir(.dirname), .basename) with $path;
+		given maildir $path.dirname.IO.dirname {
+			($!dir, $!name) = ($_, $path.basename) if :is-maildir;
+		}
 	}
 }
 
