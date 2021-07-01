@@ -35,8 +35,8 @@ class IO::Maildir::File does IO {
 
     method IO( --> IO ) {
 	for <new cur>.map: { $!dir.IO.add($_) } {
-($_ ~~ :f ?? return $_ !! Nil) given .add($!name);
-}
+	    ($_ ~~ :f ?? return $_ !! Nil) given .add($!name);
+	}
     }
     method delivered( --> Instant ) { $.IO.modified }
     method flags( --> Set ) { set $/[*;*]».Str if ~$!name ~~ &mailflags }
