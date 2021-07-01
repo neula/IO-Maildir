@@ -4,14 +4,17 @@ enum Agent ( DELIVERY => 'new', USER => 'cur' );
 my regex baseflags { [\,<:Lu>\=\d+]* }
 my regex mailflags { \:2 [\,|(P|R|S|T|D|F)|(<:Ll>)]* $ }
 
+
 my $deliveries = 0;
 my $msgdirs = <cur new tmp>;
 
 our $maildir-agent = DELIVERY;
 
-multi is-maildir(IO $path --> Bool ) is export {
+sub is-maildir(IO $path --> Bool ) is export {
 	?($path ~~ :d && $path.dir.grep( *.basename ∈ $msgdirs) == $msgdirs);
 }
+
+sub is-mail($file) { $file ~~ ! / ^^\. / }
 
 sub uniq(--> Str ) {
 	my ($sec, $usec) = ( .truncate, $_ - .truncate) given now.Num;
@@ -35,6 +38,7 @@ class IO::Maildir::File does IO {
 			($_ ~~ :f ?? return $_ !! Nil) given .add($!name);
 		}
 	}
+	method delivered( --> Instant ) { $.IO.modified }
 	method flags( --> Set ) { set $/[*;*]».Str if ~$!name ~~ &mailflags }
 	method flag(
 		:$agent = $maildir-agent,
@@ -59,10 +63,11 @@ class IO::Maildir::File does IO {
 						   <== map( *.key )
 						   <== grep( *.value )
 						   <== %new);
-		.rename(.dirname.IO.add: $uniq) given $.IO;
+		.rename(.dirname.IO.add: "../cur/" ~ $uniq) given $.IO;
 		$!name = $uniq;
 	}
 	submethod TWEAK(IO :$path) {
+		return without $path;
 		given maildir $path.dirname.IO.dirname {
 			($!dir, $!name) = ($_, $path.basename) if :is-maildir;
 		}
@@ -120,6 +125,33 @@ class IO::Maildir does IO {
 			}
 		}
 		&padd-uniq.();
+	}
+	method !mails-from-dir(IO $dir) {
+		sort( *.delivered.Num*(-1) )
+		<== map({ IO::Maildir::File.new: dir => self, name => .basename })
+		<== $dir.dir: test => &is-mail;
+	}
+	method walk(:$all, :$agent = $maildir-agent --> Seq) {
+		if $agent ~~ USER {
+			for dir( $!path.add("tmp"), test => &is-mail ) {
+				# Maildir spec expects us to clean up files in tmp,
+				# which haven't been touched for 36 hours.
+				.unlink if .accessed - now > 129600;
+			}
+		}
+		my @new-mails = self!mails-from-dir($!path.add: "new").cache;
+		gather {
+			take $_ for @new-mails;
+			if ?$all {
+				take $_ for self!mails-from-dir($!path.add: "cur");
+			}
+			#Seen mails should be moved to cur (if it hasn't happened before).
+			if $agent ~~ USER {
+				for @new-mails {
+					.flag( agent => USER ) if .IO.dirname.IO.basename ~~ "new";
+				}
+			}
+		}
 	}
 }
 
