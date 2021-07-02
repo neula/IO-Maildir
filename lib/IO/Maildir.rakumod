@@ -10,7 +10,7 @@ my regex mailflags { \:2 [\,|(P|R|S|T|D|F)|(<:Ll>)]* $ }
 my $deliveries = 0;
 my $msgdirs = <cur new tmp>;
 
-our $agent = DELIVERY;
+our $maildir-agent is export = DELIVERY;
 
 sub is-maildir(IO $path --> Bool ) is export {
     ?($path ~~ :d && $path.dir.grep( *.basename ∈ $msgdirs) == $msgdirs);
@@ -90,6 +90,7 @@ method new(|c) { self.bless( path => IO::Path.new(|c)) }
 method is-maildir( --> Bool ) { is-maildir($.path) }
 method create() {
     $msgdirs.map( { mkdir( $!path.add: $_ ) } );
+    self
 }
 multi method receive(IO $mail --> IO::Maildir::File) {
     fail Nil unless self ~~ :is-maildir;
