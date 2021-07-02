@@ -210,6 +210,7 @@ Set this to either C<IO::Maildir::DELIVERY> or C<IO::Maildir::USER>. Affects beh
 =item C<IO::Maildir>: C<walk>
 
 =head2 class IO::Maildir
+
 Class for maildir directories.
 
 =begin code

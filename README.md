@@ -32,8 +32,10 @@ Set this to either `IO::Maildir::DELIVERY` or `IO::Maildir::USER`. Affects behav
 
   * `IO::Maildir`: `walk`
 
-class IO::Maildir Class for maildir directories.
-------------------------------------------------
+class IO::Maildir
+-----------------
+
+Class for maildir directories.
 
     my $maildir = IO::Maildir.new "~/Mail/INBOX";
     my $maildir = maildir "~/Mail/INBOX" # Same
