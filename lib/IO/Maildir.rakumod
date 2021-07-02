@@ -66,6 +66,16 @@ class IO::Maildir::File does IO {
 	.rename(.dirname.IO.add: "../cur/" ~ $uniq) given $.IO;
 	$!name = $uniq;
     }
+    multi method move(IO::Maildir $maildir, Agent :$agent = $maildir-agent) {
+	fail Nil unless $maildir ~~ :is-maildir;
+	given $maildir.rename-or-mv( $.IO, $agent ) {
+	    .flag(%.flags) if $agent ~~ USER;
+	    $_;
+	}
+    }
+    multi method move (IO $iodir, Agent :$agent = $maildir-agent) {
+	nextwith maildir($iodir), agent => $agent;
+    }
     submethod TWEAK(IO :$path) {
 	return without $path;
 	given maildir $path.dirname.IO.dirname {

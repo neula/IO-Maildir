@@ -1,18 +1,30 @@
 {
-    "meta-version"	: "0",
-    "perl"		: "6.d",
-    "name"		: "IO::Maildir",
-    "api"		: "0",
-    "version"		: "0.0.1",
-    "auth"		: "zef:neula",
-    "description"	: "Simple module for accessing maildirs",
-    "license"		: "Artistic-2.0",
-    "build-depends"	: [ ],
-    "depends"		: [ ],
-    "tags"		: [ "filesystem", "email", "IO" ],
-    "provides"		: {
-	"IO::Maildir" : "lib/IO/Maildir.rakumod"
-    },
-    "source-url"	: "https://github.com/neula/IO-Maildir.git",
-    "resources"	: []
+  "api": "0",
+  "auth": "zef:neula",
+  "authors": [
+    "Neula"
+  ],
+  "build-depends": [
+  ],
+  "depends": [
+  ],
+  "description": "Simple module for accessing maildirs",
+  "license": "Artistic-2.0",
+  "meta-version": "0",
+  "name": "IO::Maildir",
+  "perl": "6.d",
+  "provides": {
+    "IO::Maildir": "lib/IO/Maildir.rakumod"
+  },
+  "resources": [
+  ],
+  "source-url": "https://github.com/neula/IO-Maildir.git",
+  "tags": [
+    "filesystem",
+    "email",
+    "IO"
+  ],
+  "test-depends": [
+  ],
+  "version": "0.0.1"
 }
