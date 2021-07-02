@@ -25,6 +25,7 @@ is ~$tdir.IO.add("cur/" ~ ~$mailfile.name), $mailfile.IO, ~$mailfile.name ~ "End
 ok ($mailfile.flags ≡ set <D>), "Reading flags";
 
 my $other-dir = maildir("./other-dir").create;
-is ~$mailfile.move( $other-dir, agent => IO::Maildir::USER).IO, ~$other-dir.IO.add("cur/" ~ ~$mailfile.name), "moving works as well";
+my $moved-mail = $mailfile.move( $other-dir, agent => IO::Maildir::USER);
+is ~$moved-mail.IO, ~$other-dir.IO.add("cur/" ~ ~$moved-mail.name), "moving works as well";
 
 done-testing;

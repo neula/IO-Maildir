@@ -29,6 +29,9 @@ sub uniq(--> Str ) {
       ~ '_' ~ ~$deliveries++ ~ '.' ~ $*KERNEL.hostname )
 }
 
+class File { ... }
+trusts File;
+
 class File does IO {
     has IO::Maildir $.dir;
     has $.name;
@@ -40,9 +43,9 @@ class File does IO {
     }
     method delivered( --> Instant ) { $.IO.modified }
     method flags( --> Set ) { set $/[*;*]».Str if ~$!name ~~ &mailflags }
-    method flag(
-	:$agent = $maildir-agent,
-	*%flags where *.keys.Set ⊆ <P R S T D>.Set )
+    multi method flag(
+	%flags where *.keys.Set ⊆ <P R S T D>.Set,
+	:$agent = $maildir-agent)
     {
 	fail "Setting flags is reserved for USER agents." if $agent ~~ DELIVERY;
 	my $uniq = $!name;
@@ -66,10 +69,13 @@ class File does IO {
 	.rename(.dirname.IO.add: "../cur/" ~ $uniq) given $.IO;
 	$!name = $uniq;
     }
+    multi method flag(:$agent = $maildir-agent, *%flags) {
+	self.flag(%flags, agent => $agent);
+    }
     multi method move(IO::Maildir $maildir, Agent :$agent = $maildir-agent) {
 	fail Nil unless $maildir ~~ :is-maildir;
-	given $maildir.rename-or-mv( $.IO, $agent ) {
-	    .flag(%.flags) if $agent ~~ USER;
+	given $maildir!IO::Maildir::rename-or-mv( $.IO, agent => $agent ) {
+	    .flag(%.flags, agent => USER) if $agent ~~ USER;
 	    $_;
 	}
     }
@@ -94,21 +100,19 @@ method create() {
 }
 multi method receive(IO $mail --> IO::Maildir::File) {
     fail Nil unless self ~~ :is-maildir;
-    IO::Maildir::File.new(
-	path => self!rename-or-mv($mail, agent => DELIVERY));
+    self!rename-or-mv($mail, agent => DELIVERY);
 }
 multi method receive(Str $mail --> IO::Maildir::File) {
     fail Nil unless self ~~ :is-maildir;
     my $mail-path = $!path.add("tmp/" ~ uniq());
     $mail-path.spurt($mail, :createonly);
-    IO::Maildir::File.new(
-	path => self!rename-or-mv($mail-path,
-				  uniq => $mail-path.basename,
-				  agent => DELIVERY));
+    self!rename-or-mv($mail-path,
+		      uniq => $mail-path.basename,
+		      agent => DELIVERY);
 }
 method !rename-or-mv(IO $path,
 		     Str :$uniq is copy = uniq(),
-		     :$agent = $maildir-agent --> IO::Path)
+		     :$agent = $maildir-agent --> IO::Maildir::File)
 {
     my &padd-uniq = { $!path.add: ~($_ // $agent.value) ~ "/" ~ $uniq };
 
@@ -132,7 +136,7 @@ method !rename-or-mv(IO $path,
 	    $_.rename( .dirname.IO.add($uniq), :createonly);
 	}
     }
-    &padd-uniq.();
+    IO::Maildir::File.new( dir => self, name => $uniq )
 }
 method !mails-from-dir(IO $dir) {
     sort( *.delivered.Num*(-1) )
