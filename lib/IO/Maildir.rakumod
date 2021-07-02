@@ -248,8 +248,8 @@ Newest mails will be returned first.
 
 If called with C<$agent = IO::Maildir::USER> it will also do the following actions:
 
-1. Look inside tmp and delete files older than 36 hours.
-2. Move files from new to cur B<after> the returned Seq is consumed.
+=item 1. Look inside tmp and delete files older than 36 hours.
+=item 2. Move files from new to cur B<after> the returned Seq is consumed.
 
 =head2 class IO::Maildir::Files
 

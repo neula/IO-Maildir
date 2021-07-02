@@ -61,7 +61,9 @@ Returns the new mails in the maildir (or all if you set it). Newest mails will b
 
 If called with `$agent = IO::Maildir::USER` it will also do the following actions:
 
-1. Look inside tmp and delete files older than 36 hours. 2. Move files from new to cur **after** the returned Seq is consumed.
+  * 1. Look inside tmp and delete files older than 36 hours.
+
+  * 2. Move files from new to cur **after** the returned Seq is consumed.
 
 class IO::Maildir::Files
 ------------------------
