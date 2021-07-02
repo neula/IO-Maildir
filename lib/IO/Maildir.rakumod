@@ -1,3 +1,5 @@
+unit class IO::Maildir;
+
 enum Agent ( DELIVERY => 'new', USER => 'cur' );
 
 #weird stuff some MDAs set for example S=<filesize>
@@ -8,7 +10,7 @@ my regex mailflags { \:2 [\,|(P|R|S|T|D|F)|(<:Ll>)]* $ }
 my $deliveries = 0;
 my $msgdirs = <cur new tmp>;
 
-our $maildir-agent = DELIVERY;
+our $agent = DELIVERY;
 
 sub is-maildir(IO $path --> Bool ) is export {
     ?($path ~~ :d && $path.dir.grep( *.basename ∈ $msgdirs) == $msgdirs);
@@ -27,9 +29,7 @@ sub uniq(--> Str ) {
       ~ '_' ~ ~$deliveries++ ~ '.' ~ $*KERNEL.hostname )
 }
 
-class IO::Maildir { ... };
-
-class IO::Maildir::File does IO {
+class File does IO {
     has IO::Maildir $.dir;
     has $.name;
 
@@ -84,82 +84,78 @@ class IO::Maildir::File does IO {
     }
 }
 
-class IO::Maildir does IO {
-    trusts IO::Maildir::File;
+has $.path handles <IO d e f l r rw rwx s w x z>;
 
-    has $.path handles <IO d e f l r rw rwx s w x z>;
+method new(|c) { self.bless( path => IO::Path.new(|c)) }
+method is-maildir( --> Bool ) { is-maildir($.path) }
+method create() {
+    $msgdirs.map( { mkdir( $!path.add: $_ ) } );
+}
+multi method receive(IO $mail --> IO::Maildir::File) {
+    fail Nil unless self ~~ :is-maildir;
+    IO::Maildir::File.new(
+	path => self!rename-or-mv($mail, agent => DELIVERY));
+}
+multi method receive(Str $mail --> IO::Maildir::File) {
+    fail Nil unless self ~~ :is-maildir;
+    my $mail-path = $!path.add("tmp/" ~ uniq());
+    $mail-path.spurt($mail, :createonly);
+    IO::Maildir::File.new(
+	path => self!rename-or-mv($mail-path,
+				  uniq => $mail-path.basename,
+				  agent => DELIVERY));
+}
+method !rename-or-mv(IO $path,
+		     Str :$uniq is copy = uniq(),
+		     :$agent = $maildir-agent --> IO::Path)
+{
+    my &padd-uniq = { $!path.add: ~($_ // $agent.value) ~ "/" ~ $uniq };
 
-    method new(|c) { self.bless( path => IO::Path.new(|c)) }
-    method is-maildir( --> Bool ) { is-maildir($.path) }
-    method create() {
-	$msgdirs.map( { mkdir( $!path.add: $_ ) } );
-    }
-    multi method receive(IO $mail --> IO::Maildir::File) {
-	fail Nil unless self ~~ :is-maildir;
-	IO::Maildir::File.new(
-	    path => self!rename-or-mv($mail, agent => DELIVERY));
-    }
-    multi method receive(Str $mail --> IO::Maildir::File) {
-	fail Nil unless self ~~ :is-maildir;
-	my $mail-path = $!path.add("tmp/" ~ uniq());
-	$mail-path.spurt($mail, :createonly);
-	IO::Maildir::File.new(
-	    path => self!rename-or-mv($mail-path,
-				      uniq => $mail-path.basename,
-				      agent => DELIVERY));
-    }
-    method !rename-or-mv(IO $path,
-			 Str :$uniq is copy = uniq(),
-			 :$agent = $maildir-agent --> IO::Path)
-    {
-	my &padd-uniq = { $!path.add: ~($_ // $agent.value) ~ "/" ~ $uniq };
-
-	#Can tmp be skipped?
-	$path.rename( &padd-uniq.(), :createonly );
-	CATCH {
-	    #Nope
-	    when X::IO::Rename {
-		#If this fails again it is most likely a bug with the uniqueness
-		#of the generated filenames.
-		$path.move(&padd-uniq.("tmp"), :createonly);
-		$path.rename(&padd-uniq.(), :createonly );
-		.resume
-	    }
+    #Can tmp be skipped?
+    $path.rename( &padd-uniq.(), :createonly );
+    CATCH {
+	#Nope
+	when X::IO::Rename {
+	    #If this fails again it is most likely a bug with the uniqueness
+	    #of the generated filenames.
+	    $path.move(&padd-uniq.("tmp"), :createonly);
+	    $path.rename(&padd-uniq.(), :createonly );
+	    .resume
 	}
-	#TODO: find out if there are other useful base-flags.
-	#maildrop and others use ',S' for quotas so lets add this.
-	unless $uniq ~~ &mailflags {
-	    given &padd-uniq.() {
-		$uniq = $uniq ~ ',S=' ~$_.s;
-		$_.rename( .dirname.IO.add($uniq), :createonly);
-	    }
+    }
+    #TODO: find out if there are other useful base-flags.
+    #maildrop and others use ',S' for quotas so lets add this.
+    unless $uniq ~~ &mailflags {
+	given &padd-uniq.() {
+	    $uniq = $uniq ~ ',S=' ~$_.s;
+	    $_.rename( .dirname.IO.add($uniq), :createonly);
 	}
-	&padd-uniq.();
     }
-    method !mails-from-dir(IO $dir) {
-	sort( *.delivered.Num*(-1) )
-	<== map({ IO::Maildir::File.new: dir => self, name => .basename })
-	<== $dir.dir: test => &is-mail;
+    &padd-uniq.();
+}
+method !mails-from-dir(IO $dir) {
+    sort( *.delivered.Num*(-1) )
+    <== map({ IO::Maildir::File.new: dir => self, name => .basename })
+    <== $dir.dir: test => &is-mail;
+}
+method walk(:$all, :$agent = $maildir-agent --> Seq) {
+    if $agent ~~ USER {
+	for dir( $!path.add("tmp"), test => &is-mail ) {
+	    # Maildir spec expects us to clean up files in tmp,
+	    # which haven't been touched for 36 hours.
+	    .unlink if .accessed - now > 129600;
+	}
     }
-    method walk(:$all, :$agent = $maildir-agent --> Seq) {
+    my @new-mails = self!mails-from-dir($!path.add: "new").cache;
+    gather {
+	take $_ for @new-mails;
+	if ?$all {
+	    take $_ for self!mails-from-dir($!path.add: "cur");
+	}
+	#Seen mails should be moved to cur (if it hasn't happened before).
 	if $agent ~~ USER {
-	    for dir( $!path.add("tmp"), test => &is-mail ) {
-		# Maildir spec expects us to clean up files in tmp,
-		# which haven't been touched for 36 hours.
-		.unlink if .accessed - now > 129600;
-	    }
-	}
-	my @new-mails = self!mails-from-dir($!path.add: "new").cache;
-	gather {
-	    take $_ for @new-mails;
-	    if ?$all {
-		take $_ for self!mails-from-dir($!path.add: "cur");
-	    }
-	    #Seen mails should be moved to cur (if it hasn't happened before).
-	    if $agent ~~ USER {
-		for @new-mails {
-		    .flag( agent => USER ) if .IO.dirname.IO.basename ~~ "new";
-		}
+	    for @new-mails {
+		.flag( agent => USER ) if .IO.dirname.IO.basename ~~ "new";
 	    }
 	}
     }
