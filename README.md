@@ -48,10 +48,11 @@ Creates a new maildir directory including its cur, new and tmp subdirectories.
 
 ### method receive
 
-    multi method receive(IO $mail --> IO::Maildir::File) { ... }
-    multi method receive(Str $mail --> IO::Maildir::File) { ... }
+    multi method receive($mail --> IO::Maildir::File) { ... }
 
-Adds a new file to the maildir. `receive` will always deliver to new and write the file to tmp first if neccessary. Note that receiving an IO object will delete the original file.
+Adds a new file to the maildir. `receive` will always deliver to new and write the file to tmp first if neccessary. `$mail` may be of any type which is accepted by `IO::Path.spurt`, which are any `Cool` or `Blob` types.
+
+Up to version 0.0.2 receiving an IO object would delete the original file. This behaviour was fixed and the original file now remains after receiving.
 
 ### method walk
 

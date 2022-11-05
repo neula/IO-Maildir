@@ -98,11 +98,7 @@ method create( --> IO::Maildir) {
     $msgdirs.map( { mkdir( $!path.add: $_ ) } );
     self
 }
-multi method receive(IO $mail --> IO::Maildir::File) {
-    fail Nil unless self ~~ :is-maildir;
-    self!rename-or-mv($mail, agent => DELIVERY);
-}
-multi method receive(Str $mail --> IO::Maildir::File) {
+method receive($mail --> IO::Maildir::File) {
     fail Nil unless self ~~ :is-maildir;
     my $mail-path = $!path.add("tmp/" ~ uniq());
     $mail-path.spurt($mail, :createonly);
@@ -205,7 +201,8 @@ C<$path> will be coerced to IO.
 our Agent $maildir-agent = IO::Maildir::DELIVERY
 =end code
 
-Set this to either C<IO::Maildir::DELIVERY> or C<IO::Maildir::USER>. Affects behaviour of following methods:
+Set this to either C<IO::Maildir::DELIVERY> or C<IO::Maildir::USER>.
+Affects behaviour of following methods:
 =item C<IO::Maildir::File>: C<flag>, C<move>
 =item C<IO::Maildir>: C<walk>
 
@@ -229,13 +226,15 @@ Creates a new maildir directory including its cur, new and tmp subdirectories.
 =head3 method receive
 
 =begin code
-multi method receive(IO $mail --> IO::Maildir::File) { ... }
-multi method receive(Str $mail --> IO::Maildir::File) { ... }
+multi method receive($mail --> IO::Maildir::File) { ... }
 =end code
 
 Adds a new file to the maildir. C<receive> will always deliver to new and write the
-file to tmp first if neccessary.
-Note that receiving an IO object will delete the original file.
+file to tmp first if neccessary. C<$mail> may be of any type which is accepted
+by C<IO::Path.spurt>, which are any C<Cool> or C<Blob> types.
+
+Up to version 0.0.2 receiving an IO object would delete the original file.
+This behaviour was fixed and the original file now remains after receiving.
 
 =head3 method walk
 
